@@ -1,0 +1,30 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: taskflow
+
+rule_files:
+  - /etc/prometheus/alert.rules.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  - job_name: taskflow-production
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["taskflow-production:3000"]
+        labels: { environment: production }
+
+  - job_name: taskflow-staging
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["taskflow-staging:3000"]
+        labels: { environment: staging }
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

@@ -1,0 +1,59 @@
+groups:
+  - name: taskflow-availability
+    rules:
+      - alert: TaskFlowDown
+        expr: up{job=~"taskflow-.*"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "TaskFlow {{ $labels.job }} is DOWN"
+          description: "Prometheus has been unable to scrape {{ $labels.instance }} for over 30 seconds."
+          runbook: "docker ps / docker logs {{ $labels.job }}; roll back with scripts/deploy.sh <env> <previous-tag>"
+
+  - name: taskflow-golden-signals
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum by (job) (rate(http_requests_total{job=~"taskflow-.*", status=~"5.."}[1m]))
+            /
+            sum by (job) (rate(http_requests_total{job=~"taskflow-.*"}[1m]))
+          ) > 0.05
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.job }}: {{ $value | humanizePercentage }} of requests are failing (5xx)"
+          description: "More than 5% of requests returned HTTP 5xx for 30 seconds."
+          runbook: "Check the Grafana 'Errors by route' panel and container logs; roll back the latest release if it correlates."
+
+      - alert: HighLatencyP95
+        expr: |
+          histogram_quantile(0.95,
+            sum by (job, le) (rate(http_request_duration_seconds_bucket{job=~"taskflow-.*"}[5m]))
+          ) > 0.5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.job }}: p95 latency is {{ $value | humanizeDuration }}"
+          description: "95th percentile latency has been above 500ms for 2 minutes."
+
+      - alert: HighMemoryUsage
+        expr: process_resident_memory_bytes{job=~"taskflow-.*"} > 200 * 1024 * 1024
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.job }}: memory at {{ $value | humanize1024 }}B (limit 256MiB)"
+          description: "Resident memory above 200MiB for 2 minutes - risk of OOM kill."
+
+      - alert: AuthFailureSpike
+        expr: sum by (job) (rate(taskflow_auth_failures_total{job=~"taskflow-.*"}[5m])) * 60 > 10
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.job }}: {{ $value | humanize }} failed logins/min"
+          description: "Possible credential-stuffing or brute-force attack."

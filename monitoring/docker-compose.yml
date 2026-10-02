@@ -1,0 +1,54 @@
+# Monitoring & alerting stack - deployed/refreshed by the Monitoring stage.
+# Configs are baked into images (no bind mounts) so Jenkins can deploy it via the Docker socket.
+name: taskflow-monitoring
+services:
+  prometheus:
+    build: ./prometheus
+    container_name: prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+      - --web.enable-lifecycle
+    ports: ["9090:9090"]
+    volumes: [prometheus_data:/prometheus]
+    restart: unless-stopped
+    networks: [devops-net]
+
+  alertmanager:
+    build: ./alertmanager
+    container_name: alertmanager
+    ports: ["9093:9093"]
+    restart: unless-stopped
+    networks: [devops-net]
+
+  grafana:
+    build: ./grafana
+    container_name: grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/dashboards/taskflow.json
+    ports: ["3002:3000"]
+    volumes: [grafana_data:/var/lib/grafana]
+    restart: unless-stopped
+    networks: [devops-net]
+
+  alert-receiver:
+    build: ./alert-receiver
+    container_name: alert-receiver
+    environment:
+      # Optional: set to a Slack (or Discord .../slack) incoming-webhook URL to forward alerts to a team channel
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+    ports: ["5001:5001"]
+    restart: unless-stopped
+    networks: [devops-net]
+
+networks:
+  devops-net:
+    external: true
+
+volumes:
+  prometheus_data:
+  grafana_data:

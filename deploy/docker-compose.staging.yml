@@ -1,0 +1,29 @@
+# Staging (test) environment - deployed automatically by the Deploy stage.
+name: taskflow-staging
+services:
+  api:
+    image: ${REGISTRY:-localhost:5050}/taskflow-api:${IMAGE_TAG:?IMAGE_TAG is required}
+    container_name: taskflow-staging
+    env_file: staging.env
+    environment:
+      APP_VERSION: ${IMAGE_TAG}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      CHAOS_TOKEN: ${CHAOS_TOKEN:?CHAOS_TOKEN is required}
+    ports:
+      - "3001:3000"
+    restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.5
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    labels:
+      com.taskflow.environment: staging
+    networks: [devops-net]
+
+networks:
+  devops-net:
+    external: true

@@ -1,0 +1,52 @@
+# DevOps platform: Jenkins + SonarQube + private Docker registry on a shared network.
+# Start from the repository root:  docker compose -f jenkins/docker-compose.yml up -d --build
+name: devops-platform
+services:
+  jenkins:
+    build: .
+    container_name: jenkins
+    # Lab setup: root lets Jenkins use the host Docker socket on Linux, macOS and Windows alike.
+    user: root
+    ports:
+      - "8080:8080"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    networks: [devops-net]
+
+  sonarqube:
+    image: sonarqube:community
+    container_name: sonarqube
+    environment:
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+    ports:
+      - "9000:9000"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+    restart: unless-stopped
+    networks: [devops-net]
+
+  registry:
+    # Artifact storage for versioned Docker images (5050 avoids the macOS AirPlay port 5000)
+    image: registry:2
+    container_name: registry
+    ports:
+      - "5050:5000"
+    volumes:
+      - registry_data:/var/lib/registry
+    restart: unless-stopped
+    networks: [devops-net]
+
+networks:
+  devops-net:
+    name: devops-net
+
+volumes:
+  jenkins_home:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:
+  registry_data:

@@ -1,0 +1,22 @@
+route:
+  receiver: team-alerts
+  group_by: [alertname, job]
+  group_wait: 10s
+  group_interval: 30s
+  repeat_interval: 1h
+  routes:
+    - matchers: ['severity="critical"']
+      receiver: team-alerts
+      group_wait: 5s
+
+receivers:
+  - name: team-alerts
+    webhook_configs:
+      - url: http://alert-receiver:5001/alertmanager
+        send_resolved: true
+
+inhibit_rules:
+  # If the service is down, don't also page for its error rate
+  - source_matchers: ['alertname="TaskFlowDown"']
+    target_matchers: ['alertname="HighErrorRate"']
+    equal: [job]

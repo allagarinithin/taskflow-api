@@ -1,0 +1,8 @@
+node_modules/
+coverage/
+reports/
+.scannerwork/
+build-info.json
+*.tgz
+.env
+.DS_Store

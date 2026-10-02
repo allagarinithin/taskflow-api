@@ -1,0 +1,6 @@
+# Accepted security findings (risk-accepted / false positives).
+# Every entry MUST have a justification and a review date. Example:
+#
+# CVE-2024-00000   # exp:2026-12-31  Only reachable via dev tooling, not in runtime image. Reviewed by N. Allaagari.
+#
+# Keep this list empty unless a finding genuinely cannot be fixed - document it in docs/SECURITY.md.
